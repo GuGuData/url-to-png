@@ -1,7 +1,7 @@
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/playwright:v1.55.1-jammy AS builder
 ENV NODE_ENV='production'
 WORKDIR /app
-RUN npm install -g pnpm \
+RUN npm install -g pnpm@9.15.9 \
     && chown -R pwuser:pwuser /app
 USER pwuser
 COPY package.json pnpm-lock.yaml /app/
@@ -15,7 +15,7 @@ FROM mcr.microsoft.com/playwright:v1.55.1-jammy
 ENV NODE_ENV='production'
 ENV DOCKER=1
 WORKDIR /app
-RUN npm install -g pnpm \
+RUN npm install -g pnpm@9.15.9 \
     && chown -R pwuser:pwuser /app
 USER pwuser
 COPY --from=builder --chown=pwuser:pwuser /app/package.json /app/pnpm-lock.yaml /app/

@@ -1,6 +1,7 @@
 import sharp from "sharp";
 
 import { BrowserPool } from "./browser_pool.js";
+import { preparePageForFullScreenshot } from "./full_page.js";
 import { IConfigAPI } from "./schema.js";
 
 export type WaitForOptions = {
@@ -58,6 +59,10 @@ export class ImageRenderService implements ImageRenderInterface {
 
       try {
         await page.goto(url, this.NAV_OPTIONS);
+
+        if (config.isFullPage) {
+          await preparePageForFullScreenshot(page);
+        }
 
         let resizeWidth: number | undefined = undefined;
         let resizeHeight: number | undefined = undefined;
