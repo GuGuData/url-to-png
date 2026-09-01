@@ -82,6 +82,10 @@ export class BrowserPool {
     await this.pool.release(browser);
   }
 
+  async destroy(browser: Browser): Promise<void> {
+    await this.pool.destroy(browser);
+  }
+
   async drain() {
     await this.pool.drain();
     await this.pool.clear();

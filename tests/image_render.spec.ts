@@ -9,17 +9,19 @@ const ONE_PIXEL_PNG = Buffer.from(
   "base64",
 );
 
-function createRenderer(goto?: () => Promise<void>) {
+function createRenderer(goto?: () => Promise<void>, screenshot?: () => Promise<Buffer>) {
   const calls: string[] = [];
   const page = {
     close: async () => calls.push("close"),
     evaluate: async () => calls.push("evaluate"),
     goto: goto ?? (async () => calls.push("goto")),
     waitForTimeout: async () => calls.push("waitForTimeout"),
-    screenshot: async () => {
-      calls.push("screenshot");
-      return ONE_PIXEL_PNG;
-    },
+    screenshot:
+      screenshot ??
+      (async () => {
+        calls.push("screenshot");
+        return ONE_PIXEL_PNG;
+      }),
   };
   const browser = {
     newPage: async () => {
@@ -32,6 +34,7 @@ function createRenderer(goto?: () => Promise<void>) {
       calls.push("acquire");
       return browser;
     },
+    destroy: async () => calls.push("destroy"),
     release: async () => calls.push("release"),
   } as unknown as BrowserPool;
 
@@ -92,5 +95,23 @@ describe("ImageRenderService", () => {
     expect(image.byteLength).toBeGreaterThan(0);
     expect(timedOut).toBe(true);
     expect(calls).toContain("screenshot");
+  });
+
+  it("destroys a browser after a rendering failure", async () => {
+    const { calls, renderer } = createRenderer(undefined, async () => {
+      calls.push("screenshot");
+      throw new Error("render failed");
+    });
+
+    await expect(
+      renderer.screenshot("https://example.com", {
+        isFullPage: false,
+        viewportHeight: 900,
+        viewportWidth: 1440,
+      }),
+    ).rejects.toThrow("render failed");
+
+    expect(calls).toContain("destroy");
+    expect(calls).not.toContain("release");
   });
 });

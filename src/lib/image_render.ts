@@ -48,6 +48,7 @@ export class ImageRenderService implements ImageRenderInterface {
     };
 
     const browser = await this.browserPool.acquire();
+    let browserReusable = true;
 
     try {
       const page = await browser.newPage({
@@ -98,8 +99,15 @@ export class ImageRenderService implements ImageRenderInterface {
       } finally {
         await page.close();
       }
+    } catch (error) {
+      browserReusable = false;
+      throw error;
     } finally {
-      await this.browserPool.release(browser);
+      if (browserReusable) {
+        await this.browserPool.release(browser);
+      } else {
+        await this.browserPool.destroy(browser);
+      }
     }
   }
 
