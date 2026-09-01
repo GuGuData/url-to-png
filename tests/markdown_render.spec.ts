@@ -14,6 +14,10 @@ function createBrowserFixture(options: { bodyHtml?: string; renderError?: Error 
         options.bodyHtml ?? "<h1>Title</h1><p>Expanded content</p><script>ignore()</script>",
       ),
     }),
+    getByText: vi.fn().mockReturnValue({
+      count: vi.fn().mockResolvedValue(0),
+      nth: vi.fn(),
+    }),
     waitForTimeout: vi.fn().mockResolvedValue(undefined),
   };
   const browser = { newPage: vi.fn().mockResolvedValue(page) };
@@ -73,5 +77,26 @@ describe("MarkdownRenderService", () => {
     expect(result.markdown).toContain("Expanded content");
     expect(browserPool.destroy).toHaveBeenCalledWith(incomplete.browser);
     expect(browserPool.release).toHaveBeenCalledWith(complete.browser);
+  });
+
+  it("uses a text locator when the DOM click does not find the control", async () => {
+    const fixture = createBrowserFixture();
+    fixture.page.evaluate.mockResolvedValue(0);
+    const trigger = {
+      click: vi.fn().mockResolvedValue(undefined),
+      evaluate: vi.fn().mockResolvedValue(false),
+      isVisible: vi.fn().mockResolvedValue(true),
+    };
+    fixture.page.getByText.mockReturnValue({
+      count: vi.fn().mockResolvedValue(1),
+      nth: vi.fn().mockReturnValue(trigger),
+    });
+    const service = new MarkdownRenderService(fixture.browserPool as never);
+
+    const result = await service.render("https://example.com/article", true);
+
+    expect(result.expandedCount).toBe(1);
+    expect(trigger.click).toHaveBeenCalledOnce();
+    expect(fixture.browserPool.release).toHaveBeenCalledWith(fixture.browser);
   });
 });

@@ -102,7 +102,7 @@ export class MarkdownRenderService implements MarkdownRenderInterface {
   }
 
   private async expandVisibleContent(page: import("playwright").Page): Promise<number> {
-    return await page.evaluate(
+    const expandedCount = await page.evaluate(
       ({ blockedPatternSource, expansionPatternSource }) => {
         const expansionPattern = new RegExp(expansionPatternSource, "i");
         const blockedPattern = new RegExp(blockedPatternSource, "i");
@@ -179,5 +179,35 @@ export class MarkdownRenderService implements MarkdownRenderInterface {
         expansionPatternSource: EXPANSION_PATTERN.source,
       },
     );
+    if (expandedCount > 0) {
+      return expandedCount;
+    }
+
+    const textTriggers = page.getByText(EXPANSION_PATTERN);
+    const triggerCount = Math.min(await textTriggers.count(), 12);
+    for (let index = triggerCount - 1; index >= 0; index -= 1) {
+      const trigger = textTriggers.nth(index);
+      if (!(await trigger.isVisible())) {
+        continue;
+      }
+
+      const blocked = await trigger.evaluate((element, blockedPatternSource) => {
+        const text = (element.textContent || "").replace(/\s+/g, " ").trim();
+        return element.closest("a[href]") !== null ||
+          new RegExp(blockedPatternSource, "i").test(text);
+      }, BLOCKED_ACTION_PATTERN.source);
+      if (blocked) {
+        continue;
+      }
+
+      try {
+        await trigger.click({ timeout: 1500 });
+        return 1;
+      } catch {
+        // Try the next matching visible text element.
+      }
+    }
+
+    return 0;
   }
 }
