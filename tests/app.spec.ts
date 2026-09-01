@@ -161,7 +161,9 @@ suite("app", () => {
 
   describe("GET /markdown?url=", () => {
     it("returns expanded Markdown", async () => {
-      const res = await app.request("/markdown?url=https://example.com");
+      const res = await app.request(
+        "/markdown?url=https://example.com&requireExpansion=true",
+      );
 
       expect(res.status).toBe(200);
       expect(await res.json()).toStrictEqual({

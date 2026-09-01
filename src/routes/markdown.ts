@@ -8,11 +8,12 @@ import { MarkdownRenderInterface } from "../lib/markdown_render.js";
 export function getMarkdown(markdownRenderService: MarkdownRenderInterface) {
   return async (c: Context<AppEnv>) => {
     const { url } = c.get("input");
+    const requireExpansion = c.req.query("requireExpansion") === "true";
     const startedAt = Date.now();
     const hostname = new URL(url).hostname;
 
     try {
-      const result = await markdownRenderService.render(url);
+      const result = await markdownRenderService.render(url, requireExpansion);
       logger.info(
         {
           characters: result.markdown.length,

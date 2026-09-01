@@ -10,7 +10,7 @@ export type MarkdownRenderResult = {
 };
 
 export interface MarkdownRenderInterface {
-  render(url: string): Promise<MarkdownRenderResult>;
+  render(url: string, requireExpansion?: boolean): Promise<MarkdownRenderResult>;
 }
 
 const EXPANSION_PATTERN =
@@ -24,22 +24,36 @@ export class MarkdownRenderService implements MarkdownRenderInterface {
 
   constructor(private readonly browserPool: BrowserPool) {}
 
-  public async render(url: string): Promise<MarkdownRenderResult> {
-    const browser = await this.browserPool.acquire();
-    let browserReusable = true;
+  public async render(url: string, requireExpansion = false): Promise<MarkdownRenderResult> {
+    const maxAttempts = requireExpansion ? 3 : 1;
+    let bestResult: MarkdownRenderResult | undefined;
+    let lastError: unknown;
 
-    try {
-      return await this.renderWithBrowser(browser, url);
-    } catch (error) {
-      browserReusable = false;
-      throw error;
-    } finally {
-      if (browserReusable) {
-        await this.browserPool.release(browser);
-      } else {
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const browser = await this.browserPool.acquire();
+      try {
+        const result = await this.renderWithBrowser(browser, url);
+        if (!bestResult || result.markdown.length > bestResult.markdown.length) {
+          bestResult = result;
+        }
+
+        if (!requireExpansion || result.expandedCount > 0) {
+          await this.browserPool.release(browser);
+          return result;
+        }
+
+        await this.browserPool.destroy(browser);
+      } catch (error) {
+        lastError = error;
         await this.browserPool.destroy(browser);
       }
     }
+
+    if (bestResult) {
+      return bestResult;
+    }
+
+    throw lastError instanceof Error ? lastError : new Error("Markdown rendering failed");
   }
 
   private async renderWithBrowser(browser: Browser, url: string): Promise<MarkdownRenderResult> {

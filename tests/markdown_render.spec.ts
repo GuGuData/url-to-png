@@ -52,4 +52,26 @@ describe("MarkdownRenderService", () => {
     expect(fixture.browserPool.release).not.toHaveBeenCalled();
     expect(fixture.page.close).toHaveBeenCalledOnce();
   });
+
+  it("replaces an incomplete browser session when expansion is required", async () => {
+    const incomplete = createBrowserFixture({ bodyHtml: "<p>Short content</p>" });
+    incomplete.page.evaluate.mockResolvedValue(0);
+    const complete = createBrowserFixture({ bodyHtml: "<h1>Title</h1><p>Expanded content</p>" });
+    const browserPool = {
+      acquire: vi
+        .fn()
+        .mockResolvedValueOnce(incomplete.browser)
+        .mockResolvedValueOnce(complete.browser),
+      destroy: vi.fn().mockResolvedValue(undefined),
+      release: vi.fn().mockResolvedValue(undefined),
+    };
+    const service = new MarkdownRenderService(browserPool as never);
+
+    const result = await service.render("https://example.com/article", true);
+
+    expect(result.expandedCount).toBe(1);
+    expect(result.markdown).toContain("Expanded content");
+    expect(browserPool.destroy).toHaveBeenCalledWith(incomplete.browser);
+    expect(browserPool.release).toHaveBeenCalledWith(complete.browser);
+  });
 });

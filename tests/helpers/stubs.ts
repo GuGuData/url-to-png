@@ -31,7 +31,7 @@ export class StubImageRenderService implements ImageRenderInterface {
 }
 
 export class StubMarkdownRenderService implements MarkdownRenderInterface {
-  async render(): Promise<MarkdownRenderResult> {
+  async render(_url: string, _requireExpansion = false): Promise<MarkdownRenderResult> {
     return { expandedCount: 1, markdown: "# Expanded content" };
   }
 }
