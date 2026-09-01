@@ -11,6 +11,7 @@ const ONE_PIXEL_PNG = Buffer.from(
 
 function createRenderer(goto?: () => Promise<void>, screenshot?: () => Promise<Buffer>) {
   const calls: string[] = [];
+  const viewports: Array<{ width: number; height: number }> = [];
   const page = {
     close: async () => calls.push("close"),
     evaluate: async () => calls.push("evaluate"),
@@ -24,8 +25,9 @@ function createRenderer(goto?: () => Promise<void>, screenshot?: () => Promise<B
       }),
   };
   const browser = {
-    newPage: async () => {
+    newPage: async (options: { viewport: { width: number; height: number } }) => {
       calls.push("newPage");
+      viewports.push(options.viewport);
       return page;
     },
   };
@@ -40,7 +42,17 @@ function createRenderer(goto?: () => Promise<void>, screenshot?: () => Promise<B
 
   return {
     calls,
-    renderer: new ImageRenderService(browserPool),
+    renderer: new ImageRenderService(browserPool, {
+      width: 250,
+      height: 250,
+      viewportWidth: 1080,
+      viewportHeight: 1080,
+      isMobile: false,
+      isFullPage: false,
+      isDarkMode: false,
+      deviceScaleFactor: 1,
+    }),
+    viewports,
   };
 }
 
@@ -113,5 +125,17 @@ describe("ImageRenderService", () => {
 
     expect(calls).toContain("destroy");
     expect(calls).not.toContain("release");
+  });
+
+  it("preserves default viewport dimensions for omitted inputs", async () => {
+    const { renderer, viewports } = createRenderer();
+
+    await renderer.screenshot("https://example.com", {
+      isFullPage: false,
+      viewportHeight: undefined,
+      viewportWidth: undefined,
+    });
+
+    expect(viewports).toStrictEqual([{ width: 1080, height: 1080 }]);
   });
 });

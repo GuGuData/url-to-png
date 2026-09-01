@@ -32,19 +32,20 @@ export class ImageRenderService implements ImageRenderInterface {
   }
 
   public async screenshot(url: string, config: IConfigAPI = {}): Promise<Buffer> {
-    let { width, height, ...defaultConfig } = this.defaultConfig;
-
-    if (!config.width && !config.height) {
-      config.width = width;
-
-      if (!config.isFullPage) {
-        config.height = height;
-      }
-    }
-
+    const { width, height, ...defaultConfig } = this.defaultConfig;
     config = {
       ...defaultConfig,
       ...config,
+      width: config.width ?? width,
+      height: config.height ?? (config.isFullPage ? undefined : height),
+      viewportWidth:
+        config.viewportWidth ?? config.viewPortWidth ?? defaultConfig.viewportWidth,
+      viewportHeight:
+        config.viewportHeight ?? config.viewPortHeight ?? defaultConfig.viewportHeight,
+      isMobile: config.isMobile ?? defaultConfig.isMobile,
+      isFullPage: config.isFullPage ?? defaultConfig.isFullPage,
+      isDarkMode: config.isDarkMode ?? defaultConfig.isDarkMode,
+      deviceScaleFactor: config.deviceScaleFactor ?? defaultConfig.deviceScaleFactor,
     };
 
     const browser = await this.browserPool.acquire();
