@@ -1,3 +1,4 @@
+import { errors as playwrightErrors } from "playwright";
 import { describe, expect, it } from "vitest";
 
 import type { BrowserPool } from "../src/lib/browser_pool.js";
@@ -8,12 +9,13 @@ const ONE_PIXEL_PNG = Buffer.from(
   "base64",
 );
 
-function createRenderer() {
+function createRenderer(goto?: () => Promise<void>) {
   const calls: string[] = [];
   const page = {
     close: async () => calls.push("close"),
     evaluate: async () => calls.push("evaluate"),
-    goto: async () => calls.push("goto"),
+    goto: goto ?? (async () => calls.push("goto")),
+    waitForTimeout: async () => calls.push("waitForTimeout"),
     screenshot: async () => {
       calls.push("screenshot");
       return ONE_PIXEL_PNG;
@@ -71,5 +73,24 @@ describe("ImageRenderService", () => {
 
     expect(calls).not.toContain("evaluate");
     expect(calls.indexOf("goto")).toBeLessThan(calls.indexOf("screenshot"));
+    expect(calls).toContain("waitForTimeout");
+  });
+
+  it("captures a best-effort image after a navigation timeout", async () => {
+    let timedOut = false;
+    const { calls, renderer } = createRenderer(async () => {
+      timedOut = true;
+      throw new playwrightErrors.TimeoutError("navigation timed out");
+    });
+
+    const image = await renderer.screenshot("https://example.com", {
+      isFullPage: false,
+      viewportHeight: 900,
+      viewportWidth: 1440,
+    });
+
+    expect(image.byteLength).toBeGreaterThan(0);
+    expect(timedOut).toBe(true);
+    expect(calls).toContain("screenshot");
   });
 });

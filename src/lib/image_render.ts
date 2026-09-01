@@ -1,4 +1,5 @@
 import sharp from "sharp";
+import { errors as playwrightErrors } from "playwright";
 
 import { BrowserPool } from "./browser_pool.js";
 import { preparePageForFullScreenshot } from "./full_page.js";
@@ -15,6 +16,7 @@ export interface ImageRenderInterface {
 
 export class ImageRenderService implements ImageRenderInterface {
   private readonly NAV_OPTIONS: WaitForOptions;
+  private readonly postLoadWaitMs: number;
 
   constructor(
     private readonly browserPool: BrowserPool,
@@ -26,6 +28,7 @@ export class ImageRenderService implements ImageRenderInterface {
       timeout: Number(process.env.BROWSER_TIMEOUT) || 10000,
       ...navigationOptions,
     };
+    this.postLoadWaitMs = Number(process.env.BROWSER_POST_LOAD_WAIT_MS) || 500;
   }
 
   public async screenshot(url: string, config: IConfigAPI = {}): Promise<Buffer> {
@@ -58,10 +61,18 @@ export class ImageRenderService implements ImageRenderInterface {
       });
 
       try {
-        await page.goto(url, this.NAV_OPTIONS);
+        try {
+          await page.goto(url, this.NAV_OPTIONS);
+        } catch (error) {
+          if (!(error instanceof playwrightErrors.TimeoutError)) {
+            throw error;
+          }
+        }
 
         if (config.isFullPage) {
           await preparePageForFullScreenshot(page);
+        } else if (this.postLoadWaitMs > 0) {
+          await page.waitForTimeout(this.postLoadWaitMs);
         }
 
         let resizeWidth: number | undefined = undefined;

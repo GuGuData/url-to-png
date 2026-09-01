@@ -27,6 +27,12 @@ export function createApplication(
   stringEncrypter?: StringEncrypter,
 ) {
   const app = new Hono<AppEnv>();
+  const requestMetrics = {
+    active: 0,
+    failed: 0,
+    succeeded: 0,
+    total: 0,
+  };
 
   app.use(
     secureHeaders({
@@ -35,7 +41,9 @@ export function createApplication(
   );
 
   if (process.env.METRICS === "true") {
-    app.get("/metrics", c => c.json({ poolMetrics: browserPool.poolMetrics }));
+    app.get("/metrics", c =>
+      c.json({ poolMetrics: browserPool.poolMetrics, requestMetrics: { ...requestMetrics } }),
+    );
   }
 
   app.get("/ping", c => c.json("pong"));
@@ -49,6 +57,24 @@ export function createApplication(
   });
 
   app.use("/", handleExtractQueryParamsMiddleware(stringEncrypter));
+
+  app.use("/", async (c, next) => {
+    requestMetrics.active += 1;
+    requestMetrics.total += 1;
+    try {
+      await next();
+      if (c.res.status < 500) {
+        requestMetrics.succeeded += 1;
+      } else {
+        requestMetrics.failed += 1;
+      }
+    } catch (error) {
+      requestMetrics.failed += 1;
+      throw error;
+    } finally {
+      requestMetrics.active -= 1;
+    }
+  });
 
   if (process.env.BLOCK_LIST && process.env.BLOCK_LIST.trim() !== "") {
     const allowList = formatUrlList(process.env.BLOCK_LIST);

@@ -42,6 +42,9 @@ export class BrowserPool {
     async destroy(browser: Browser) {
       await browser.close();
     },
+    async validate(browser: Browser) {
+      return browser.isConnected();
+    },
   };
 
   constructor({ poolOpts }: BrowserPoolConstructorArgs = {} as BrowserPoolConstructorArgs) {
@@ -50,7 +53,9 @@ export class BrowserPool {
       max: Number(process.env.POOL_MAX) || 10,
       min: Number(process.env.POOL_MIN) || 2,
       maxWaitingClients: Number(process.env.POOL_MAX_WAITING_CLIENTS) || 50,
+      acquireTimeoutMillis: Number(process.env.POOL_ACQUIRE_TIMEOUT_MS) || 5000,
       idleTimeoutMillis: Number(process.env.POOL_IDLE_TIMEOUT_MS) || 15000,
+      testOnBorrow: true,
       ...poolOpts,
     };
     logger.info(poolOpts);

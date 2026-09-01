@@ -35,16 +35,23 @@ async function main() {
   const port = Number(process.env.PORT) || 3089;
   server = serve({ fetch: app.fetch, port });
 
-  process.on("SIGINT", async () => {
+  const shutdown = async () => {
     logger.info("Playwright Shutdown [STARTING]");
-    logger.info("Playwright Shutdown [DONE]");
     logger.info("Server Shutdown [STARTING]");
-    server?.close();
+    if (server) {
+      await new Promise<void>((resolve, reject) => {
+        server?.close(error => (error ? reject(error) : resolve()));
+      });
+    }
     await browserPool.drain();
+    logger.info("Playwright Shutdown [DONE]");
     logger.info("Server Shutdown [DONE]");
     logger.info("EXITING...");
     process.exit(0);
-  });
+  };
+
+  process.once("SIGINT", shutdown);
+  process.once("SIGTERM", shutdown);
 
   logger.info(`Server is running on port http://localhost:${port}/ping`);
   if (process.env.NODE_ENV === "development") {

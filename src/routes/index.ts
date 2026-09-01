@@ -14,26 +14,55 @@ export function getIndex(
   return async (c: Context<AppEnv>) => {
     const { url, ...input } = c.get("input");
     const imageId = c.get("imageId");
+    const startedAt = Date.now();
+    const hostname = new URL(url).hostname;
 
     let imageBuffer: Buffer | null = await imageStorageService.fetchImage(imageId);
+    const cacheHit = imageBuffer !== null;
 
     if (imageBuffer === null || input.forceReload) {
       try {
         imageBuffer = await imageRenderService.screenshot(url, input);
       } catch (err: any) {
-        throw new HTTPException(500, { message: err.message });
+        logger.error(
+          {
+            durationMs: Date.now() - startedAt,
+            errorName: err instanceof Error ? err.name : "UnknownError",
+            hostname,
+          },
+          "Screenshot rendering failed",
+        );
+        c.header("Retry-After", "2");
+        throw new HTTPException(503, { message: "Screenshot service is temporarily unavailable" });
       }
 
       try {
         await imageStorageService.storeImage(imageId, imageBuffer);
       } catch (err) {
-        logger.error("Error storing image", err);
+        logger.error(
+          {
+            errorName: err instanceof Error ? err.name : "UnknownError",
+            hostname,
+          },
+          "Error storing image",
+        );
       }
     }
 
     if (imageBuffer === null) {
-      throw new HTTPException(500, { message: "Error rendering image" });
+      c.header("Retry-After", "2");
+      throw new HTTPException(503, { message: "Screenshot service is temporarily unavailable" });
     }
+
+    logger.info(
+      {
+        bytes: imageBuffer.byteLength,
+        cacheHit,
+        durationMs: Date.now() - startedAt,
+        hostname,
+      },
+      "Screenshot rendered",
+    );
 
     return c.body(new Uint8Array(imageBuffer), 200, {
       "Content-Type": "image/png",

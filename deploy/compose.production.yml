@@ -1,0 +1,28 @@
+services:
+  url-to-png:
+    image: ${URL_TO_PNG_IMAGE:?URL_TO_PNG_IMAGE is required}
+    container_name: url-to-png
+    restart: unless-stopped
+    ports:
+      - "3089:3089"
+    environment:
+      BROWSER_POST_LOAD_WAIT_MS: "500"
+      BROWSER_TIMEOUT: "10000"
+      BROWSER_WAIT_UNTIL: domcontentloaded
+      LOG_LEVEL: info
+      METRICS: "true"
+      NODE_ENV: production
+      POOL_ACQUIRE_TIMEOUT_MS: "5000"
+      POOL_IDLE_TIMEOUT_MS: "30000"
+      POOL_MAX: "8"
+      POOL_MAX_WAITING_CLIENTS: "50"
+      POOL_MIN: "2"
+      STORAGE_PROVIDER: stub
+    cpus: 2
+    mem_limit: 4g
+    shm_size: 1g
+    logging:
+      driver: json-file
+      options:
+        max-file: "3"
+        max-size: 20m

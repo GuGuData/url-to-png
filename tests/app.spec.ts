@@ -4,6 +4,7 @@ import { it, describe, suite, expect, beforeEach } from "vitest";
 
 import { type AppEnv, createApplication } from "../src/app.js";
 import { createBrowserPool, createImageStorageService } from "../src/lib/factory.js";
+import type { ImageRenderInterface } from "../src/lib/image_render.js";
 import { StubImageRenderService } from "./helpers/stubs.js";
 
 suite("app", () => {
@@ -44,6 +45,12 @@ suite("app", () => {
           size: 2,
           spareResourceCapacity: 8,
         },
+        requestMetrics: {
+          active: 0,
+          failed: 0,
+          succeeded: 0,
+          total: 0,
+        },
       });
     });
   });
@@ -63,6 +70,23 @@ suite("app", () => {
       const url = encodeURIComponent("https://jasonraimondi.com");
       const res = await app.request(`/?url=${url}`);
       expect(res.status).toBe(200);
+    });
+
+    it("returns a retriable response when rendering fails", async () => {
+      const failingRenderer: ImageRenderInterface = {
+        screenshot: async () => {
+          throw new Error("internal browser failure");
+        },
+      };
+      app = createApplication(browserPool, failingRenderer, imageStorageService);
+
+      const res = await app.request("/?url=https://example.com");
+      const body = await res.json();
+
+      expect(res.status).toBe(503);
+      expect(res.headers.get("Retry-After")).toBe("2");
+      expect(body.message).toBe("Screenshot service is temporarily unavailable");
+      expect(JSON.stringify(body)).not.toContain("internal browser failure");
     });
 
     it("throws when invalid domain", async () => {
