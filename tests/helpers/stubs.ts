@@ -1,10 +1,6 @@
 import fs from "fs/promises";
 
 import { ImageRenderInterface } from "../../src/lib/image_render.js";
-import {
-  MarkdownRenderInterface,
-  MarkdownRenderResult,
-} from "../../src/lib/markdown_render.js";
 
 export class StubImageRenderService implements ImageRenderInterface {
   static readonly POOL_METRICS = {
@@ -27,11 +23,5 @@ export class StubImageRenderService implements ImageRenderInterface {
 
   poolMetrics(): Record<string, number> {
     return StubImageRenderService.POOL_METRICS;
-  }
-}
-
-export class StubMarkdownRenderService implements MarkdownRenderInterface {
-  async render(_url: string, _requireExpansion = false): Promise<MarkdownRenderResult> {
-    return { expandedCount: 1, markdown: "# Expanded content" };
   }
 }

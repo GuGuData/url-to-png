@@ -9,7 +9,6 @@ import {
   createBrowserPool,
   createImageRenderService,
   createImageStorageService,
-  createMarkdownRenderService,
 } from "./lib/factory.js";
 import { logger } from "./lib/logger.js";
 
@@ -25,13 +24,11 @@ async function main() {
   const browserPool: BrowserPool = createBrowserPool();
 
   const imageRenderService = createImageRenderService(browserPool);
-  const markdownRenderService = createMarkdownRenderService(browserPool);
 
   const app = createApplication(
     browserPool,
     imageRenderService,
     imageStorageService,
-    markdownRenderService,
     encryptionService,
   );
 

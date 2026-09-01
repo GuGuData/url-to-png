@@ -5,7 +5,6 @@ import nano from "nano";
 import { BrowserPool } from "./browser_pool.js";
 import { ImageRenderService, WaitForOptions } from "./image_render.js";
 import { logger } from "./logger.js";
-import { MarkdownRenderService } from "./markdown_render.js";
 import { ImageStorage } from "./storage/_base.js";
 import { CouchDbStorageProvider } from "./storage/couch-db.js";
 import { FileSystemStorageProvider } from "./storage/filesystem.js";
@@ -50,10 +49,6 @@ export function createImageRenderService(browserPool: BrowserPool) {
   };
 
   return new ImageRenderService(browserPool, defaultConfig, navigationOptions);
-}
-
-export function createMarkdownRenderService(browserPool: BrowserPool) {
-  return new MarkdownRenderService(browserPool);
 }
 
 export function createImageStorageService(): ImageStorage {
