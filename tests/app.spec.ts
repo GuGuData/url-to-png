@@ -5,7 +5,7 @@ import { it, describe, suite, expect, beforeEach } from "vitest";
 import { type AppEnv, createApplication } from "../src/app.js";
 import { createBrowserPool, createImageStorageService } from "../src/lib/factory.js";
 import type { ImageRenderInterface } from "../src/lib/image_render.js";
-import { StubImageRenderService } from "./helpers/stubs.js";
+import { StubImageRenderService, StubMarkdownRenderService } from "./helpers/stubs.js";
 
 suite("app", () => {
   let app: Hono<AppEnv>;
@@ -13,9 +13,15 @@ suite("app", () => {
   const browserPool = createBrowserPool();
   const imageStorageService = createImageStorageService();
   const imageRenderService = new StubImageRenderService();
+  const markdownRenderService = new StubMarkdownRenderService();
 
   beforeEach(() => {
-    app = createApplication(browserPool, imageRenderService, imageStorageService);
+    app = createApplication(
+      browserPool,
+      imageRenderService,
+      imageStorageService,
+      markdownRenderService,
+    );
   });
 
   describe("GET /ping", () => {
@@ -29,7 +35,12 @@ suite("app", () => {
   describe("GET /metrics", () => {
     beforeEach(() => {
       process.env.METRICS = "true";
-      app = createApplication(browserPool, imageRenderService, imageStorageService);
+      app = createApplication(
+        browserPool,
+        imageRenderService,
+        imageStorageService,
+        markdownRenderService,
+      );
     });
 
     it("success", async () => {
@@ -78,7 +89,12 @@ suite("app", () => {
           throw new Error("internal browser failure");
         },
       };
-      app = createApplication(browserPool, failingRenderer, imageStorageService);
+      app = createApplication(
+        browserPool,
+        failingRenderer,
+        imageStorageService,
+        markdownRenderService,
+      );
 
       const res = await app.request("/?url=https://example.com");
       const body = await res.json();
@@ -129,6 +145,7 @@ suite("app", () => {
           browserPool,
           imageRenderService,
           imageStorageService,
+          markdownRenderService,
           stringEncrypter,
         );
       });
@@ -138,6 +155,18 @@ suite("app", () => {
           "/?hash=str-enc:a/4xkic0kY8scM3QRJIiLLtQ3NhZxEudhmd7RZDbsuuguXkamhZe0HdW9LmnZxtGCtf0GAPO5II85fE8rSkdFNIbBATyS/INKM0hmw==:a4S74z7c4DQVtijl",
         );
         expect(res.status).toBe(200);
+      });
+    });
+  });
+
+  describe("GET /markdown?url=", () => {
+    it("returns expanded Markdown", async () => {
+      const res = await app.request("/markdown?url=https://example.com");
+
+      expect(res.status).toBe(200);
+      expect(await res.json()).toStrictEqual({
+        expandedCount: 1,
+        markdown: "# Expanded content",
       });
     });
   });

@@ -1,11 +1,12 @@
 import { StringEncrypter } from "@jmondi/string-encrypt-decrypt";
-import { Hono } from "hono";
+import { Hono, MiddlewareHandler } from "hono";
 import { secureHeaders } from "hono/secure-headers";
 import { ContentfulStatusCode } from "hono/utils/http-status";
 
 import { BrowserPool } from "./lib/browser_pool.js";
 import { ImageRenderInterface } from "./lib/image_render.js";
 import { logger } from "./lib/logger.js";
+import { MarkdownRenderInterface } from "./lib/markdown_render.js";
 import { PlainConfigSchema } from "./lib/schema.js";
 import { ImageStorage } from "./lib/storage/_base.js";
 import { formatUrlList } from "./lib/utils.js";
@@ -13,6 +14,7 @@ import { handleAllowListMiddleware } from "./middlewares/allow_list.js";
 import { handleBlockListMiddleware } from "./middlewares/block_list.js";
 import { handleExtractQueryParamsMiddleware } from "./middlewares/extract_query_params.js";
 import { getIndex } from "./routes/index.js";
+import { getMarkdown } from "./routes/markdown.js";
 
 export type Variables = {
   input: PlainConfigSchema;
@@ -24,6 +26,7 @@ export function createApplication(
   browserPool: BrowserPool,
   imageRenderService: ImageRenderInterface,
   imageStorageService: ImageStorage,
+  markdownRenderService: MarkdownRenderInterface,
   stringEncrypter?: StringEncrypter,
 ) {
   const app = new Hono<AppEnv>();
@@ -56,9 +59,11 @@ export function createApplication(
     return c.json({ message: err.message }, status);
   });
 
-  app.use("/", handleExtractQueryParamsMiddleware(stringEncrypter));
+  const extractQueryParams = handleExtractQueryParamsMiddleware(stringEncrypter);
+  app.use("/", extractQueryParams);
+  app.use("/markdown", extractQueryParams);
 
-  app.use("/", async (c, next) => {
+  const trackRequest: MiddlewareHandler<AppEnv> = async (c, next) => {
     requestMetrics.active += 1;
     requestMetrics.total += 1;
     try {
@@ -74,20 +79,27 @@ export function createApplication(
     } finally {
       requestMetrics.active -= 1;
     }
-  });
+  };
+  app.use("/", trackRequest);
+  app.use("/markdown", trackRequest);
 
   if (process.env.BLOCK_LIST && process.env.BLOCK_LIST.trim() !== "") {
     const allowList = formatUrlList(process.env.BLOCK_LIST);
     logger.info(`Blocked Domains: ${allowList.join(", ")}`);
-    app.use("/", handleBlockListMiddleware(allowList));
+    const blockListMiddleware = handleBlockListMiddleware(allowList);
+    app.use("/", blockListMiddleware);
+    app.use("/markdown", blockListMiddleware);
   }
 
   if (process.env.ALLOW_LIST && process.env.ALLOW_LIST.trim() !== "") {
     const allowList = formatUrlList(process.env.ALLOW_LIST);
     logger.info(`Allowed Domains: ${allowList.join(", ")}`);
-    app.use("/", handleAllowListMiddleware(allowList));
+    const allowListMiddleware = handleAllowListMiddleware(allowList);
+    app.use("/", allowListMiddleware);
+    app.use("/markdown", allowListMiddleware);
   }
 
+  app.get("/markdown", getMarkdown(markdownRenderService));
   app.get("/", getIndex(imageStorageService, imageRenderService));
 
   return app;
