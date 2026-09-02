@@ -14,12 +14,16 @@ services:
       NODE_ENV: production
       POOL_ACQUIRE_TIMEOUT_MS: "5000"
       POOL_IDLE_TIMEOUT_MS: "30000"
-      POOL_MAX: "8"
-      POOL_MAX_WAITING_CLIENTS: "50"
+      POOL_MAX: "2"
+      POOL_MAX_WAITING_CLIENTS: "8"
       POOL_MIN: "2"
-      STORAGE_PROVIDER: stub
+      STORAGE_PROVIDER: memory
+      MEMORY_CACHE_MAX_BYTES: "134217728"
+      MEMORY_CACHE_MAX_ENTRIES: "100"
+      MEMORY_CACHE_TTL_MS: "60000"
     cpus: 2
     mem_limit: 4g
+    pids_limit: 256
     shm_size: 1g
     logging:
       driver: json-file

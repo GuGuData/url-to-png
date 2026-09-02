@@ -8,6 +8,7 @@ import { logger } from "./logger.js";
 import { ImageStorage } from "./storage/_base.js";
 import { CouchDbStorageProvider } from "./storage/couch-db.js";
 import { FileSystemStorageProvider } from "./storage/filesystem.js";
+import { MemoryStorageProvider } from "./storage/memory.js";
 import { AmazonS3StorageProvider } from "./storage/s3.js";
 import { StubStorageProvider } from "./storage/stub.js";
 import { isValidNum } from "./utils.js";
@@ -81,6 +82,13 @@ export function createImageStorageService(): ImageStorage {
     case "filesystem":
       const filePath = process.env.IMAGE_STORAGE_PATH!;
       imageStorage = new FileSystemStorageProvider(filePath);
+      break;
+    case "memory":
+      imageStorage = new MemoryStorageProvider({
+        maxBytes: Number(process.env.MEMORY_CACHE_MAX_BYTES) || 128 * 1024 * 1024,
+        maxEntries: Number(process.env.MEMORY_CACHE_MAX_ENTRIES) || 100,
+        ttlMs: Number(process.env.MEMORY_CACHE_TTL_MS) || 60000,
+      });
       break;
     case "stub":
     default:

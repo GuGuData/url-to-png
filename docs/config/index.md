@@ -46,6 +46,13 @@ Configure various settings through environment variables.
 
 The project supports multiple storage providers for caching rendered images. The storage provider can be configured using the `STORAGE_PROVIDER` environment variable. The available storage providers are:
 
+### Bounded memory cache
+
+- `STORAGE_PROVIDER`: `"memory"`
+- `MEMORY_CACHE_TTL_MS`: Cache lifetime in milliseconds. Default: `60000`.
+- `MEMORY_CACHE_MAX_ENTRIES`: Maximum cached image count. Default: `100`.
+- `MEMORY_CACHE_MAX_BYTES`: Maximum cached image bytes. Default: `134217728`.
+
 ### Stub Storage Provider (default)
 
 The stub storage provider is a placeholder storage provider that doesn't actually store or retrieve images, it simply logs debug messages. It can be used for testing or when storage functionality is not required.

@@ -89,6 +89,31 @@ suite("app", () => {
       expect(JSON.stringify(body)).not.toContain("internal browser failure");
     });
 
+    it("coalesces concurrent renders for the same image", async () => {
+      let calls = 0;
+      let release: (() => void) | undefined;
+      const gate = new Promise<void>(resolve => {
+        release = resolve;
+      });
+      const renderer: ImageRenderInterface = {
+        screenshot: async () => {
+          calls += 1;
+          await gate;
+          return Buffer.from("image");
+        },
+      };
+      app = createApplication(browserPool, renderer, imageStorageService);
+
+      const first = app.request("/?url=https://example.com&forceReload=true");
+      const second = app.request("/?url=https://example.com&forceReload=true");
+      await Promise.resolve();
+      release?.();
+
+      expect((await first).status).toBe(200);
+      expect((await second).status).toBe(200);
+      expect(calls).toBe(1);
+    });
+
     it("throws when invalid domain", async () => {
       const res = await app.request("/?url=bar");
       expect(res.status).toBe(400);
