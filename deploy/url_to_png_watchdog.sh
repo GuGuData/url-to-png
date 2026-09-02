@@ -90,6 +90,13 @@ main() {
     exit 0
   fi
 
+  if [[ "${http_code}" == "429" ]] || [[ "${http_code}" == "503" ]]; then
+    write_failures 0
+    log "status=degraded reason=overloaded http_code=${http_code} bytes=${bytes} content_type=${content_type}"
+    rm -rf "${tmp_dir}"
+    exit 0
+  fi
+
   log "response_body=$(head -c 300 "${body}" 2>/dev/null | tr '\n' ' ')"
   rm -rf "${tmp_dir}"
   record_failure "screenshot_failed http_code=${http_code} bytes=${bytes} content_type=${content_type}"
