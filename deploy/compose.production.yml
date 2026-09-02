@@ -12,10 +12,10 @@ services:
       LOG_LEVEL: info
       METRICS: "true"
       NODE_ENV: production
-      POOL_ACQUIRE_TIMEOUT_MS: "5000"
+      POOL_ACQUIRE_TIMEOUT_MS: "20000"
       POOL_IDLE_TIMEOUT_MS: "30000"
-      POOL_MAX: "2"
-      POOL_MAX_WAITING_CLIENTS: "8"
+      POOL_MAX: "3"
+      POOL_MAX_WAITING_CLIENTS: "16"
       POOL_MIN: "2"
       STORAGE_PROVIDER: memory
       MEMORY_CACHE_MAX_BYTES: "134217728"
